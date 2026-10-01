@@ -1,0 +1,1001 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>猪猪接食物</title>
+  <style>
+    :root {
+      --ink: #30251f;
+      --pink: #ff6f91;
+      --yellow: #ffd166;
+      --sky: #bdeaff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, "Microsoft YaHei", sans-serif;
+      background: var(--sky);
+      color: var(--ink);
+    }
+
+    body {
+      touch-action: none;
+    }
+
+    #game {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      isolation: isolate;
+      background:
+        linear-gradient(#bcecff 0%, #e8f9ff 70%, #fff6e4 100%);
+    }
+
+    #game::before,
+    #game::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.68);
+      filter: blur(1px);
+    }
+
+    #game::before {
+      width: 230px;
+      height: 72px;
+      top: 18%;
+      left: 9%;
+      box-shadow:
+        72px -22px 0 -8px rgba(255, 255, 255, 0.68),
+        132px 2px 0 -12px rgba(255, 255, 255, 0.68);
+    }
+
+    #game::after {
+      width: 210px;
+      height: 62px;
+      top: 34%;
+      right: 5%;
+      box-shadow:
+        -62px -23px 0 -8px rgba(255, 255, 255, 0.68),
+        -124px 3px 0 -13px rgba(255, 255, 255, 0.68);
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    @keyframes rainbowMove {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      100% {
+        background-position: 100% 50%;
+      }
+    }
+
+    @keyframes energyRainbowFlash {
+      0% {
+        filter: brightness(1);
+        transform: scale(1);
+      }
+
+      100% {
+        filter: brightness(1.65);
+        transform: scale(1.025);
+      }
+    }
+
+    @media (max-width: 620px) {
+      #energyPanel {
+        top: 12px;
+        left: 12px;
+        width: min(205px, calc(100vw - 24px));
+        padding: 8px 9px 9px;
+      }
+
+      .energyTitle {
+        margin-bottom: 5px;
+        font-size: 9px;
+      }
+
+      #energyBar {
+        gap: 3px;
+        height: 15px;
+      }
+
+      .energySegment {
+        border-width: 1.5px;
+      }
+    }
+
+    #hud {
+      position: absolute;
+      z-index: 5;
+      top: 18px;
+      right: 18px;
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+      pointer-events: none;
+    }
+
+    .stat {
+      min-width: 112px;
+      padding: 10px 14px;
+      border: 3px solid var(--ink);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: 4px 4px 0 var(--ink);
+      text-align: center;
+    }
+
+    .label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    #score {
+      display: block;
+      margin-top: 2px;
+      font-size: 24px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    #lives {
+      display: block;
+      margin-top: 4px;
+      color: #ed4b6a;
+      font-size: 22px;
+      line-height: 1;
+      letter-spacing: 2px;
+      white-space: nowrap;
+    }
+
+    #message {
+      position: absolute;
+      z-index: 8;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(34, 27, 24, 0.25);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 180ms ease;
+    }
+
+    #message.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .panel {
+      width: min(90vw, 390px);
+      padding: 28px 26px 24px;
+      border: 4px solid var(--ink);
+      border-radius: 20px;
+      background: #fffdf7;
+      box-shadow: 8px 8px 0 var(--ink);
+      text-align: center;
+    }
+
+    .panel h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+    }
+
+    .panel p {
+      margin: 8px 0 20px;
+      font-size: 18px;
+    }
+
+    button {
+      min-height: 48px;
+      padding: 10px 24px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background: var(--yellow);
+      color: var(--ink);
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 4px 4px 0 var(--ink);
+    }
+
+    button:active {
+      transform: translate(3px, 3px);
+      box-shadow: 1px 1px 0 var(--ink);
+    }
+
+    #controls {
+      position: absolute;
+      z-index: 6;
+      bottom: 18px;
+      left: 50%;
+      display: flex;
+      gap: 12px;
+      transform: translateX(-50%);
+    }
+
+    .control {
+      width: 62px;
+      height: 54px;
+      padding: 0;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.87);
+      font-size: 28px;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .hint {
+      position: absolute;
+      z-index: 3;
+      top: 105px;
+      left: 20px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.62);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    /* @media (max-width: 620px) {
+      #hud {
+        top: 12px;
+        right: 12px;
+        gap: 6px;
+      }
+
+      .stat {
+        min-width: 92px;
+        padding: 8px 10px;
+      }
+
+      #score {
+        font-size: 21px;
+      }
+
+      #lives {
+        font-size: 18px;
+      }
+
+      .hint {
+        top: 12px;
+        left: 12px;
+        font-size: 11px;
+      }
+    } */
+
+     #energyPanel {
+      position: absolute;
+      z-index: 5;
+      top: 18px;
+      left: 20px;
+      width: min(250px, calc(100vw - 40px));
+      padding: 10px 12px 12px;
+      border: 3px solid var(--ink);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: 4px 4px 0 var(--ink);
+    }
+
+    .energyTitle {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+
+    #energyBar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      height: 18px;
+    }
+
+    .energySegment {
+      display: block;
+      min-width: 0;
+      border: 2px solid var(--ink);
+      border-radius: 4px;
+      background: #fff;
+      transition:
+        background 160ms ease,
+        box-shadow 160ms ease,
+        transform 160ms ease;
+    }
+
+    .energySegment.filled {
+      background: #ffdb35;
+      box-shadow: 0 0 7px rgba(255, 208, 38, 0.95);
+    }
+
+    #energyBar.rainbow {
+      animation: energyRainbowFlash 180ms linear infinite alternate;
+    }
+
+    #energyBar.rainbow .energySegment {
+      background: linear-gradient(
+        135deg,
+        #ff4f81 0%,
+        #ffb52e 25%,
+        #ffe34c 42%,
+        #63d78d 62%,
+        #54c8ff 80%,
+        #ba7cff 100%
+      );
+      background-size: 300% 300%;
+      animation: rainbowMove 650ms linear infinite;
+      box-shadow:
+        0 0 7px #ff6f91,
+        0 0 14px #55cfff;
+    }
+  </style>
+</head>
+<body>
+  <main id="game">
+    <canvas id="canvas"></canvas>
+
+    <div class="hint">← → 或 A / D 控制猪猪</div>
+    <div id="energyPanel">
+      <span class="energyTitle">FOOD ENERGY</span>
+      <div id="energyBar" aria-label="连续进食能量">
+        <span class="energySegment"></span>
+        <span class="energySegment"></span>
+        <span class="energySegment"></span>
+        <span class="energySegment"></span>
+        <span class="energySegment"></span>
+        <span class="energySegment"></span>
+        <span class="energySegment"></span>
+      </div>
+    </div>
+
+    <section id="hud" aria-label="游戏状态">
+      <div class="stat">
+        <span class="label">SCORE</span>
+        <strong id="score">0</strong>
+      </div>
+      <div class="stat">
+        <span class="label">LIFE</span>
+        <strong id="lives">♥ ♥ ♥</strong>
+      </div>
+    </section>
+
+    <div id="controls" aria-label="移动控制">
+      <button class="control" id="left" aria-label="向左移动">←</button>
+      <button class="control" id="right" aria-label="向右移动">→</button>
+    </div>
+
+    <section id="message">
+      <div class="panel">
+        <h1 id="messageTitle">游戏结束</h1>
+        <p id="messageText">最终得分：0</p>
+        <button id="restart">重新开始</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.querySelector("#canvas");
+    const ctx = canvas.getContext("2d");
+    const game = document.querySelector("#game");
+    const scoreEl = document.querySelector("#score");
+    const livesEl = document.querySelector("#lives");
+    const energyBar = document.querySelector("#energyBar");
+    const energySegments = document.querySelectorAll(".energySegment");
+    const message = document.querySelector("#message");
+    const messageText = document.querySelector("#messageText");
+    const restartButton = document.querySelector("#restart");
+
+    const pigImage = new Image();
+    //pigImage.crossOrigin = "anonymous";
+    pigImage.src =
+      "pig.png";
+
+    const foods = [
+      { emoji: "🌯", name: "虎皮卷", score: 8, color: "#f3a13b" },
+      { emoji: "🧁", name: "小蛋糕", score: 10, color: "#ff7ba5" },
+      { emoji: "🥪", name: "三明治", score: 12, color: "#76b947" },
+      { emoji: "🍩", name: "甜甜圈", score: 15, color: "#bb78e8" },
+      { emoji: "🍔", name: "汉堡包", score: 18, color: "#e88742" },
+      { emoji: "🍟", name: "薯条", score: 14, color: "#f4c542" },
+      { emoji: "🥔", name: "薯片", score: 11, color: "#e9a23b" },
+      { emoji: "🥤", name: "可乐", score: 13, color: "#b85d4e" },
+      { emoji: "🍕", name: "披萨", score: 16, color: "#e85d3f" },
+      { emoji: "🍎", name: "苹果", score: 9, color: "#e9484f" },
+      { emoji: "🍉", name: "西瓜", score: 12, color: "#52b788" },
+      { emoji: "🍪", name: "曲奇", score: 10, color: "#c98952" },
+      { emoji: "🍜", name: "拉面", score: 17, color: "#f2a65a" }
+    ];
+
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let lastTime = 0;
+    let spawnTimer = 0;
+    let score = 0;
+    let lives = 3;
+    let running = true;
+    let direction = 1;
+    let keys = { left: false, right: false };
+    let items = [];
+    let particles = [];
+    let shake = 0;
+    let tearTimer = 0;
+    let foodStreak = 0;
+    let energyFlashTimer = 0;
+    let maxLives = 5;
+    let healEffectTimer = 0;
+
+    const healEffectDuration = 0.8;
+
+    const pig = {
+      x: 0,
+      y: 0,
+      bottomY: 0,
+      width: 190,
+      height: 125,
+      baseWidth: 190,
+      baseHeight: 125,
+      speed: 430,
+      scale: 1,
+      targetScale: 1,
+      maxScale: 7,
+    };
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = game.clientWidth;
+      height = game.clientHeight;
+
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      pig.bottomY = height - Math.max(20, height * 0.06);
+      pig.y = height - Math.max(20, height * 0.06);
+      pig.x = Math.min(Math.max(pig.x, 30), width - 30);
+    }
+
+    function resetGame() {
+      score = 0;
+      lives = 3;
+      items = [];
+      particles = [];
+      spawnTimer = 0;
+      tearTimer = 0;
+      shake = 0;
+      running = true;
+      energyFlashTimer = 0;
+      direction = 1;
+      foodStreak = 0;
+      pig.scale = 1;
+      pig.targetScale = 1;
+      pig.width = pig.baseWidth;
+      pig.height = pig.baseHeight;
+      pig.x = width / 2;
+      pig.y = pig.bottomY - pig.height / 2;
+      updateHud();
+      message.classList.remove("visible");
+    }
+
+    function updateHud() {
+      scoreEl.textContent = score;
+      livesEl.textContent = `${"♥ ".repeat(lives)}${"♡ ".repeat(5 - lives)}`.trim();
+
+      energySegments.forEach((segment, index) => {
+        segment.classList.toggle(
+          "filled",
+          energyFlashTimer <= 0 && index < foodStreak
+        );
+      });
+
+      energyBar.classList.toggle("rainbow", energyFlashTimer > 0);
+    }
+
+    function spawnItem() {
+      const isBomb = Math.random() < 0.1;
+      const food = foods[Math.floor(Math.random() * foods.length)];
+
+      items.push({
+        x: 35 + Math.random() * Math.max(1, width - 70),
+        y: -45,
+        size: 40 + Math.random() * 9,
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * 2.4,
+        speed: 125 + Math.random() * 75,
+        type: isBomb ? "bomb" : "food",
+        food
+      });
+    }
+
+    function createBurst(x, y, color, count = 16) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 70 + Math.random() * 180;
+
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 40,
+          life: 0.7 + Math.random() * 0.5,
+          maxLife: 1.2,
+          size: 4 + Math.random() * 7,
+          color
+        });
+      }
+    }
+
+    function createExplosion(x, y) {
+      createBurst(x, y, "#ffbd36", 33);
+      createBurst(x, y, "#ef4c55", 15);
+      shake = 0.6;
+    }
+
+    function currentFallMultiplier() {
+      const elapsedMinutes = performance.now() / 60000;
+      return 1 + Math.log1p(elapsedMinutes * 4) * 0.9;
+    }
+
+    function update(dt) {
+      if (!running) return;
+
+      if (energyFlashTimer > 0) {
+        energyFlashTimer = Math.max(0, energyFlashTimer - dt);
+        updateHud();
+      }
+
+      tearTimer = Math.max(0, tearTimer - dt);
+      healEffectTimer = Math.max(0, healEffectTimer - dt);
+
+      const elapsed = performance.now() / 1000;
+      const move = (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
+
+      if (move !== 0) {
+        direction = move > 0 ? 1 : -1;
+        pig.x += move * pig.speed * dt;
+      }
+
+      pig.x = Math.max(
+        pig.width * 0.34,
+        Math.min(width - pig.width * 0.34, pig.x)
+      );
+
+      pig.scale +=
+        (pig.targetScale - pig.scale) * Math.min(1, dt * 5);
+
+      pig.width = pig.baseWidth * pig.scale;
+      pig.height = pig.baseHeight * pig.scale;
+      pig.y = pig.bottomY - pig.height / 2;   // 固定猪猪底部，体型变大时只向上扩展
+
+      const spawnInterval = Math.max(260, 800 - Math.log1p(elapsed) * 105);
+
+      spawnTimer += dt * 1000;
+
+      if (spawnTimer >= spawnInterval) {
+        spawnTimer = 0;
+        spawnItem();
+
+        if (Math.random() < Math.min(0.3, elapsed / 180)) {
+          spawnItem();
+        }
+      }
+
+      const fallMultiplier = currentFallMultiplier();
+
+      for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i];
+
+        item.y += item.speed * fallMultiplier * dt;
+        item.rotation += item.rotationSpeed * dt;
+
+        if (checkCollision(item)) {
+          if (item.type === "bomb") {
+            lives--;
+            foodStreak = 0;
+
+            createExplosion(item.x, item.y);
+            updateHud();
+
+            if (lives <= 0) {
+              endGame();
+            }
+          } else {
+            score += item.food.score;
+            foodStreak++;
+
+            pig.targetScale = Math.min(
+              pig.maxScale,
+              pig.targetScale + 0.03
+            );
+
+            if (foodStreak >= 7) {
+              const oldLives = lives;
+              lives = Math.min(maxLives, lives + 1);
+              score += 50;
+
+              if (lives >= maxLives) {
+                score += 50;
+              }
+              energyFlashTimer = 1;
+              foodStreak = 0;
+
+              if (lives > oldLives) {
+                healEffectTimer = healEffectDuration;
+                // createBurst(pig.x, pig.y, "#4ade80", 24);
+              }
+            }
+
+            createBurst(item.x, item.y, item.food.color, 18);
+            updateHud();
+
+            if (pig.targetScale >= pig.maxScale) {
+              pig.targetScale = pig.maxScale;
+              endGame(
+                "猪猪今天吃饱啦！",
+                `最终得分：${score}`
+              );
+            }
+          }
+
+          items.splice(i, 1);
+          continue;
+        }
+
+        if (item.y - item.size > height + 20) {
+          if (item.type === "food") {
+            tearTimer = 0.7;
+            if (foodStreak >= 1) {
+              foodStreak = Math.max(0, foodStreak - 2);
+            }
+            updateHud();
+          }
+
+          items.splice(i, 1);
+        }
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const particle = particles[i];
+
+        particle.x += particle.vx * dt;
+        particle.y += particle.vy * dt;
+        particle.vy += 300 * dt;
+        particle.life -= dt;
+
+        if (particle.life <= 0) {
+          particles.splice(i, 1);
+        }
+      }
+
+      shake = Math.max(0, shake - dt);
+    }
+
+    function checkCollision(item) {
+      const pigLeft = pig.x - pig.width * 0.35;
+      const pigRight = pig.x + pig.width * 0.35;
+      const pigTop = pig.y - pig.height * 0.38;
+      const pigBottom = pig.y + pig.height * 0.35;
+
+      const itemRadius = item.size * 0.38;
+
+      return (
+        item.x + itemRadius > pigLeft &&
+        item.x - itemRadius < pigRight &&
+        item.y + itemRadius > pigTop &&
+        item.y - itemRadius < pigBottom
+      );
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+
+      const offsetX = shake > 0 ? (Math.random() - 0.5) * 13 : 0;
+      const offsetY = shake > 0 ? (Math.random() - 0.5) * 13 : 0;
+
+      ctx.save();
+      ctx.translate(offsetX, offsetY);
+
+      drawGround();
+      drawItems();
+      drawHealEffect();
+      drawPig();
+      drawParticles();
+
+      ctx.restore();
+    }
+
+    function drawGround() {
+      ctx.save();
+      ctx.fillStyle = "#a8df75";
+      ctx.beginPath();
+      ctx.moveTo(0, height);
+      ctx.quadraticCurveTo(width * 0.25, height - 56, width * 0.5, height - 26);
+      ctx.quadraticCurveTo(width * 0.76, height - 65, width, height - 22);
+      ctx.lineTo(width, height);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+      for (let x = 20; x < width; x += 48) {
+        ctx.beginPath();
+        ctx.arc(x, height - 17, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function drawItems() {
+      for (const item of items) {
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        ctx.rotate(item.rotation);
+
+        if (item.type === "bomb") {
+          ctx.font = `${item.size}px serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("💣", 0, 0);
+        } else {
+          ctx.font = `${item.size}px serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(item.food.emoji, 0, 0);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    function drawPig() {
+      const drawWidth = pig.width;
+      const drawHeight = pig.height;
+
+      ctx.save();
+      ctx.translate(pig.x, pig.y);
+      ctx.scale(direction, 1);
+
+      if (pigImage.complete && pigImage.naturalWidth > 0) {
+        ctx.globalCompositeOperation = "multiply";
+        ctx.drawImage(
+          pigImage,
+          -drawWidth / 2,
+          -drawHeight / 2,
+          drawWidth,
+          drawHeight
+        );
+        ctx.globalCompositeOperation = "source-over";
+      } else {
+        drawFallbackPig(drawWidth, drawHeight);
+      }
+        
+      if (tearTimer > 0) {
+        drawTears(drawWidth, drawHeight);
+      }
+
+      ctx.restore();
+    }
+
+    function drawHealEffect() {
+      if (healEffectTimer <= 0) return;
+
+      const progress = 1 - healEffectTimer / healEffectDuration;
+      const radius = Math.max(pig.width, pig.height) * 0.42 + progress * 42;
+      const alpha = 1 - progress;
+
+      ctx.save();
+
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = "#4ade80";
+      ctx.lineWidth = 5;
+      ctx.shadowColor = "#22c55e";
+      ctx.shadowBlur = 18;
+
+      ctx.beginPath();
+      ctx.arc(pig.x, pig.y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 添加第二圈较淡的光环
+      ctx.globalAlpha = alpha * 0.45;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(pig.x, pig.y, radius + 12, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawTears(drawWidth, drawHeight) {
+      const progress = tearTimer / 0.9;
+
+      // 眼泪开始和结束时淡出
+      const fadeIn = Math.min(1, (0.9 - tearTimer) / 0.12);
+      const fadeOut = Math.min(1, tearTimer / 0.2);
+      const alpha = Math.min(fadeIn, fadeOut);
+
+      // 参考图中的眼睛位置
+      const eyeX = -drawWidth * 0.15;
+      const eyeY = -drawHeight * 0.04;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = "#55bff2";
+      ctx.strokeStyle = "#247fae";
+      ctx.lineWidth = Math.max(1.5, drawWidth * 0.012);
+
+      // 眼泪水滴会向下滑动
+      const dropOffset = (1 - progress) * drawHeight * 0.11;
+
+      drawTearDrop(
+        eyeX + drawWidth * 0.31,
+        eyeY + drawHeight * 0.08 + dropOffset,
+        drawWidth * 0.027,
+        drawHeight * 0.075
+      );
+
+      drawTearDrop(
+        eyeX + drawWidth * 0.39,
+        eyeY + drawHeight * 0.17 + dropOffset * 0.82,
+        drawWidth * 0.023,
+        drawHeight * 0.065
+      );
+
+      ctx.restore();
+    }
+
+    function drawTearDrop(x, y, width, height) {
+      ctx.beginPath();
+      ctx.moveTo(x, y - height / 2);
+      ctx.bezierCurveTo(
+        x - width,
+        y - height * 0.05,
+        x - width * 0.8,
+        y + height / 2,
+        x,
+        y + height / 2
+      );
+      ctx.bezierCurveTo(
+        x + width * 0.8,
+        y + height / 2,
+        x + width,
+        y - height * 0.05,
+        x,
+        y - height / 2
+      );
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }    
+
+    function drawFallbackPig(w, h) {
+      ctx.fillStyle = "#ffc0cb";
+      ctx.strokeStyle = "#30251f";
+      ctx.lineWidth = 5;
+
+      ctx.beginPath();
+      ctx.ellipse(0, 0, w * 0.42, h * 0.38, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.ellipse(w * 0.25, h * 0.04, w * 0.17, h * 0.14, 0, 0, Math.PI * 2);
+      ctx.fillStyle = "#ff9fb1";
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#30251f";
+      ctx.beginPath();
+      ctx.arc(w * 0.2, -h * 0.02, 4, 0, Math.PI * 2);
+      ctx.arc(w * 0.31, -h * 0.02, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawParticles() {
+      for (const particle of particles) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, particle.life / particle.maxLife);
+        ctx.fillStyle = particle.color;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    function endGame(title = "游戏结束，猪猪被炸飞啦！", text = `最终得分：${score}`) {
+      running = false;
+      document.querySelector("#messageTitle").textContent = title;
+      messageText.textContent = text;
+      message.classList.add("visible");
+    }
+
+    function frame(time) {
+      const dt = Math.min(0.035, (time - lastTime) / 1000 || 0);
+      lastTime = time;
+
+      update(dt);
+      draw();
+      requestAnimationFrame(frame);
+    }
+
+    function setKey(name, value) {
+      keys[name] = value;
+    }
+
+    function bindControl(button, name) {
+      const start = event => {
+        event.preventDefault();
+        setKey(name, true);
+      };
+
+      const end = event => {
+        event.preventDefault();
+        setKey(name, false);
+      };
+
+      button.addEventListener("pointerdown", start);
+      button.addEventListener("pointerup", end);
+      button.addEventListener("pointercancel", end);
+      button.addEventListener("pointerleave", end);
+    }
+
+    window.addEventListener("keydown", event => {
+      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") {
+        event.preventDefault();
+        setKey("left", true);
+      }
+
+      if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") {
+        event.preventDefault();
+        setKey("right", true);
+      }
+
+      if (event.key === " " && !running) {
+        resetGame();
+      }
+    });
+
+    window.addEventListener("keyup", event => {
+      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") {
+        setKey("left", false);
+      }
+
+      if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") {
+        setKey("right", false);
+      }
+    });
+
+    restartButton.addEventListener("click", resetGame);
+    bindControl(document.querySelector("#left"), "left");
+    bindControl(document.querySelector("#right"), "right");
+    window.addEventListener("resize", resize);
+
+    resize();
+    resetGame();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
