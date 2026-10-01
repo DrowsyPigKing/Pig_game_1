@@ -257,33 +257,6 @@
       font-weight: 700;
     }
 
-    /* @media (max-width: 620px) {
-      #hud {
-        top: 12px;
-        right: 12px;
-        gap: 6px;
-      }
-
-      .stat {
-        min-width: 92px;
-        padding: 8px 10px;
-      }
-
-      #score {
-        font-size: 21px;
-      }
-
-      #lives {
-        font-size: 18px;
-      }
-
-      .hint {
-        top: 12px;
-        left: 12px;
-        font-size: 11px;
-      }
-    } */
-
      #energyPanel {
       position: absolute;
       z-index: 5;
@@ -627,10 +600,7 @@
             score += item.food.score;
             foodStreak++;
 
-            pig.targetScale = Math.min(
-              pig.maxScale,
-              pig.targetScale + 0.03
-            );
+            pig.targetScale = Math.min(pig.maxScale, pig.targetScale + 0.03);
 
             if (foodStreak >= 7) {
               const oldLives = lives;
@@ -669,7 +639,7 @@
           if (item.type === "food") {
             tearTimer = 0.7;
             if (foodStreak >= 1) {
-              foodStreak = Math.max(0, foodStreak - 2);
+              foodStreak = Math.max(0, foodStreak - 1);
             }
             updateHud();
           }
